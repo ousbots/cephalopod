@@ -59,20 +59,14 @@ pub struct Tx {
 impl Tx {
     /// Parse a record into a transaction struct
     pub fn from(record: &String) -> Result<Self, Box<dyn Error>> {
-        let tokens: Vec<&str> = record.split(',').map(|e| e.trim()).collect();
+        let mut tokens = record.split(',');
 
-        if tokens.len() == 4 {
-            return Ok(Tx {
-                typ: Type::from(&tokens[0])?,
-                client: str::parse::<u16>(&tokens[1])?,
-                id: str::parse::<u32>(&tokens[2])?,
-                amount: str::parse::<f32>(&tokens[3])?,
-            });
-        }
-
-        Err(Box::new(ParseError {
-            msg: format!("bad record {}", record.clone()),
-        }))
+        Ok(Tx {
+            typ: Type::from(tokens.next().ok_or("missing type")?.trim())?,
+            client: str::parse::<u16>(tokens.next().ok_or("missing client")?.trim())?,
+            id: str::parse::<u32>(tokens.next().ok_or("missing id")?.trim())?,
+            amount: str::parse::<f32>(tokens.next().ok_or("missing amount")?.trim())?,
+        })
     }
 }
 
@@ -98,18 +92,22 @@ pub fn args() -> Result<String, ParseError> {
 /// Parses the input file into transactions, returning a vector of transactions.
 pub async fn input(path: String, txs: mpsc::Sender<Tx>) -> Result<(), Box<dyn Error>> {
     let file = File::open(path).unwrap();
-    let reader = BufReader::new(file);
+    let mut reader = BufReader::new(file);
+    let mut buffer = String::new();
 
-    for line in reader.lines() {
-        let record = line?;
-        match Tx::from(&record) {
+    while let Ok(read) = reader.read_line(&mut buffer) {
+        if read == 0 {
+            break;
+        }
+        match Tx::from(&buffer) {
             Ok(tx) => {
                 if txs.send(tx).await.is_err() {
                     break;
                 }
             }
-            Err(err) => eprintln!("Couldn't parse record ({}): {}", record, err),
+            Err(err) => eprintln!("Couldn't parse record ({}): {}", buffer, err),
         }
+        buffer.clear();
     }
 
     Ok(())
