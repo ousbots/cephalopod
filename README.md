@@ -1,0 +1,34 @@
+A toy transactions processing program for a take-home test.
+
+## Design
+=========
+
+There are two asynchronous functions `parse::input` and `engine::process` that communicate via a
+channel as a processing pipeline. The `parse::input` function reads the input csv with a buffered
+reader, parses each line, then sends the transaction over the channel. The `engine::process`
+function is listening on the channel for transactions, then uses a hashmap as a key-value store
+of client accounts and updates the account using the transaction data and a few rules.
+
+This design is meant to simulate a microservices deployment of a production design with the two
+functions representing indivual services. The `parse::input` worker emulates a service that reads
+csv files and streams them to the processing service, using the channel as a simulated network. Also,
+the `engine::process` worker uses a hashmap to simulate how a production service would use a
+networked key-value store. Because the bottleneck was reading the csv file, it didn't necessary to
+run multiple `engine::process` workers. If that was needed, the hashmap could be moved out of the
+function and shared among the workers with an `Arc` and a mutex, but that would then lose the
+guarantee of processing transactions chronologicly without moving management of the hashmap to it's
+own process and adding more functionality that seemed out of the scope of this project.
+
+
+## Notes
+========
+
+I tried to refer to the Uniform Commercial Code as much as possible to decide what rules to apply
+when processing a transaction, summarized below:
+
+* A deposit is allowed no matter what, even if the account is locked.
+* A withdrawal is only allowed on an account that is not locked and has a positive balance.
+* Any dispute transction (dispute, resolve, chargeback) will happen as long as the account exists.
+  Even if the account is locked or does not have sufficient funds. This is from my interpretation
+  (corroborated via random websites) of UCC section 4-214 (https://www.law.cornell.edu/ucc/4/4-214)
+  that the credit dispute process is completely unavoidable no matter what the account status is.

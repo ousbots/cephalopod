@@ -191,12 +191,12 @@ async fn frozen() {
 
     assert!(ledger.contains_key(&1));
     let acct = ledger.get(&1).unwrap();
-    assert_eq!(acct.available, 2.0);
+    assert_eq!(acct.available, 3.5);
     assert_eq!(acct.held, 0.);
     assert_eq!(acct.locked, true);
 }
 
-//#[ignore]
+#[ignore]
 #[tokio::test]
 async fn limits() {
     let (tx, rx) = mpsc::channel(32);
