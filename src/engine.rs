@@ -18,12 +18,17 @@ pub struct Account {
 ///   withdrawals from an account that it considers fraudulent, but the Uniform Commercial Code
 ///   (UCC) does legally compel a processor to return funds in a chargeback (Section 4-214).
 ///   
-///   Therefore I'm making the assumption that it is better to reject both deposits and
-///   and withdrawals from frozen accounts and move that settlement to human interactions.
+///   Therefore I'm making the assumption that it is better to reject withdrawals from frozen
+///   accounts and move that settlement to human interactions, but allow deposits
 pub async fn process(mut txs: mpsc::Receiver<Tx>) -> HashMap<u16, Account> {
+    // Ideally this is a remote key-value store that can evict old history records after the
+    // chargeback time limits have passed. The hashmap is used as a representation of that in
+    // this toy program.
     let mut accts = HashMap::<u16, Account>::new();
+
     while let Some(tx) = txs.recv().await {
         match tx.typ {
+            // Searching online it seems common for banks to allow deposits to frozen accounts.
             Type::Deposit => {
                 let entry = accts.entry(tx.client).or_insert(Account {
                     client: tx.client,
@@ -32,10 +37,8 @@ pub async fn process(mut txs: mpsc::Receiver<Tx>) -> HashMap<u16, Account> {
                     locked: false,
                     history: HashMap::new(),
                 });
-                if !entry.locked {
-                    entry.available += f64::from(tx.amount);
-                    entry.history.insert(tx.id, tx.amount);
-                }
+                entry.available += f64::from(tx.amount);
+                entry.history.insert(tx.id, tx.amount);
             }
 
             Type::Withdrawal => {
