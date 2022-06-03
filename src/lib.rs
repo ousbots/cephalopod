@@ -18,7 +18,7 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
     println!("client, available, held, total, locked");
     for (key, acct) in ledger {
         println!(
-            "   {},\t  {},\t    {},\t  {}\t{}",
+            "{}, {}, {}, {}, {}",
             key,
             acct.available,
             acct.held,
