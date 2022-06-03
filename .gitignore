@@ -1,2 +1,4 @@
 /target
+data/many_clients.csv
+data/single_client.csv
 RustCodingTest.pdf
