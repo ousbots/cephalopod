@@ -16,7 +16,10 @@ networked key-value store. Because the bottleneck was reading the csv file, it d
 run multiple `engine::process` workers. If that was needed, the hashmap could be moved out of the
 function and shared among the workers with an `Arc` and a mutex, but that would then lose the
 guarantee of processing transactions chronologicly without moving management of the hashmap to it's
-own process and adding more functionality that seemed out of the scope of this project.
+own process and adding more functionality that seemed out of the scope of this project. Additionally
+in a production environment, the `engine::process` worker would be broken down further to
+asynchronously to have threads that handle connections and recieving data and passing that via 
+channels to threads that process the transactions and update the key-value store.
 
 
 ## Notes
@@ -30,3 +33,10 @@ when processing a transaction, summarized below:
   Even if the account is locked or does not have sufficient funds. This is from my interpretation
   (corroborated via random websites) of UCC section 4-214 (https://www.law.cornell.edu/ucc/4/4-214)
   that the credit dispute process is completely unavoidable no matter what the account status is.
+
+## Testing
+
+The `data/create_data.sh` script is provided to create two large test files, one that makes
+deposits to a single account and another to make deposits to many accounts. This is useful
+for testing performance and memory usage. Integration tests in the `tests` folder are used to
+ensure the correctness of the transaction processing based on the transaction notes listed above.
