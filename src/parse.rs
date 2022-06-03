@@ -1,10 +1,6 @@
-use std::{
-    env,
-    error::Error,
-    fmt,
-    fs::File,
-    io::{prelude::*, BufReader},
-};
+use csv::ReaderBuilder;
+use serde::Deserialize;
+use std::{env, error::Error, fmt, fs::File, io::BufReader};
 use tokio::sync::mpsc;
 
 /// Custom error type to pass error messages.
@@ -22,52 +18,29 @@ impl fmt::Display for ParseError {
 }
 
 /// Transaction type.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 pub enum Type {
+    #[serde(rename(deserialize = "deposit"))]
     Deposit,
+    #[serde(rename(deserialize = "withdrawal"))]
     Withdrawal,
+    #[serde(rename(deserialize = "dispute"))]
     Dispute,
+    #[serde(rename(deserialize = "resolve"))]
     Resolve,
+    #[serde(rename(deserialize = "chargeback"))]
     Chargeback,
 }
 
-impl Type {
-    /// Parses a string into a transaction type.
-    pub fn from(token: &str) -> Result<Self, ParseError> {
-        match token {
-            "deposit" => Ok(Type::Deposit),
-            "withdrawal" => Ok(Type::Withdrawal),
-            "dispute" => Ok(Type::Dispute),
-            "resolve" => Ok(Type::Resolve),
-            "chargeback" => Ok(Type::Chargeback),
-            _ => Err(ParseError {
-                msg: format!("bad type: {}", token),
-            }),
-        }
-    }
-}
-
 /// Transaction data.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Tx {
+    #[serde(rename(deserialize = "type"))]
     pub typ: Type,
     pub client: u16,
+    #[serde(rename(deserialize = "tx"))]
     pub id: u32,
     pub amount: f32,
-}
-
-impl Tx {
-    /// Parse a record into a transaction struct
-    pub fn from(record: &String) -> Result<Self, Box<dyn Error>> {
-        let mut tokens = record.split(',');
-
-        Ok(Tx {
-            typ: Type::from(tokens.next().ok_or("missing type")?.trim())?,
-            client: str::parse::<u16>(tokens.next().ok_or("missing client")?.trim())?,
-            id: str::parse::<u32>(tokens.next().ok_or("missing id")?.trim())?,
-            amount: str::parse::<f32>(tokens.next().ok_or("missing amount")?.trim())?,
-        })
-    }
 }
 
 /// Parses the command line arguments and returns the path passed in.
@@ -92,22 +65,15 @@ pub fn args() -> Result<String, ParseError> {
 /// Parses the input file into transactions, returning a vector of transactions.
 pub async fn input(path: String, txs: mpsc::Sender<Tx>) -> Result<(), Box<dyn Error>> {
     let file = File::open(path).unwrap();
-    let mut reader = BufReader::new(file);
-    let mut buffer = String::new();
+    let mut reader = ReaderBuilder::new()
+        .trim(csv::Trim::All)
+        .from_reader(BufReader::new(file));
 
-    while let Ok(read) = reader.read_line(&mut buffer) {
-        if read == 0 {
+    for record in reader.deserialize() {
+        let tx: Tx = record?;
+        if txs.send(tx).await.is_err() {
             break;
         }
-        match Tx::from(&buffer) {
-            Ok(tx) => {
-                if txs.send(tx).await.is_err() {
-                    break;
-                }
-            }
-            Err(err) => eprintln!("Couldn't parse record ({}): {}", buffer, err),
-        }
-        buffer.clear();
     }
 
     Ok(())
