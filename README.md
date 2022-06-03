@@ -1,7 +1,6 @@
 A toy transactions processing program for a take-home test.
 
 ## Design
-=========
 
 There are two asynchronous functions `parse::input` and `engine::process` that communicate via a
 channel as a processing pipeline. The `parse::input` function reads the input csv with a buffered
@@ -21,7 +20,6 @@ own process and adding more functionality that seemed out of the scope of this p
 
 
 ## Notes
-========
 
 I tried to refer to the Uniform Commercial Code as much as possible to decide what rules to apply
 when processing a transaction, summarized below:
