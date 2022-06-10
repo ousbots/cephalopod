@@ -11,91 +11,91 @@ async fn basics() {
             id: 9,
             typ: Type::Resolve,
             client: 6,
-            amount: 0.,
+            amount: Some(0.),
         },
         Tx {
             id: 3,
             typ: Type::Deposit,
             client: 2,
-            amount: 1.5,
+            amount: Some(1.5),
         },
         Tx {
             id: 7,
             typ: Type::Deposit,
             client: 4,
-            amount: 2.5,
+            amount: Some(2.5),
         },
         Tx {
             id: 1,
             typ: Type::Deposit,
             client: 1,
-            amount: 1.,
+            amount: Some(1.),
         },
         Tx {
             id: 2,
             typ: Type::Deposit,
             client: 2,
-            amount: 1.5,
+            amount: Some(1.5),
         },
         Tx {
             id: 5,
             typ: Type::Deposit,
             client: 3,
-            amount: 2.0,
+            amount: Some(2.0),
         },
         Tx {
             id: 4,
             typ: Type::Withdrawal,
             client: 2,
-            amount: 0.5,
+            amount: Some(0.5),
         },
         Tx {
             id: 3,
             typ: Type::Dispute,
             client: 2,
-            amount: 0.,
+            amount: Some(0.),
         },
         Tx {
             id: 10,
             typ: Type::Dispute,
             client: 7,
-            amount: 0.,
+            amount: Some(0.),
         },
         Tx {
             id: 5,
             typ: Type::Dispute,
             client: 3,
-            amount: 0.,
+            amount: Some(0.),
         },
         Tx {
             id: 6,
             typ: Type::Deposit,
             client: 4,
-            amount: 1.0,
+            amount: Some(1.0),
         },
         Tx {
             id: 5,
             typ: Type::Resolve,
             client: 3,
-            amount: 0.,
+            amount: Some(0.),
         },
         Tx {
             id: 6,
             typ: Type::Dispute,
             client: 4,
-            amount: 0.,
+            amount: Some(0.),
         },
         Tx {
             id: 8,
             typ: Type::Chargeback,
             client: 5,
-            amount: 0.,
+            amount: Some(0.),
         },
         Tx {
             id: 6,
             typ: Type::Chargeback,
             client: 4,
-            amount: 0.,
+            amount: Some(0.),
         },
     ];
 
@@ -107,6 +107,8 @@ async fn basics() {
     });
     let (parsed, ledger) = tokio::join!(parser, engine::process(rx));
     assert!(parsed.is_ok());
+    assert!(ledger.is_ok());
+    let ledger = ledger.unwrap();
     assert_eq!(ledger.len(), 4);
 
     assert!(ledger.contains_key(&1));
@@ -145,37 +147,37 @@ async fn frozen() {
             id: 1,
             typ: Type::Deposit,
             client: 1,
-            amount: 2.0,
+            amount: Some(2.0),
         },
         Tx {
             id: 2,
             typ: Type::Deposit,
             client: 1,
-            amount: 1.0,
+            amount: Some(1.0),
         },
         Tx {
             id: 2,
             typ: Type::Dispute,
             client: 1,
-            amount: 0.,
+            amount: Some(0.),
         },
         Tx {
             id: 2,
             typ: Type::Chargeback,
             client: 1,
-            amount: 0.,
+            amount: Some(0.),
         },
         Tx {
             id: 3,
             typ: Type::Deposit,
             client: 1,
-            amount: 1.5,
+            amount: Some(1.5),
         },
         Tx {
             id: 4,
             typ: Type::Withdrawal,
             client: 1,
-            amount: 3.0,
+            amount: Some(3.0),
         },
     ];
 
@@ -187,6 +189,8 @@ async fn frozen() {
     });
     let (parsed, ledger) = tokio::join!(parser, engine::process(rx));
     assert!(parsed.is_ok());
+    assert!(ledger.is_ok());
+    let ledger = ledger.unwrap();
     assert_eq!(ledger.len(), 1);
 
     assert!(ledger.contains_key(&1));
@@ -204,7 +208,7 @@ async fn limits() {
         id: 1,
         typ: Type::Deposit,
         client: 1,
-        amount: 1.,
+        amount: Some(1.),
     };
     let max: u32 = 10000000;
     let parser = tokio::spawn(async move {
@@ -216,6 +220,8 @@ async fn limits() {
 
     let (parsed, ledger) = tokio::join!(parser, engine::process(rx));
     assert!(parsed.is_ok());
+    assert!(ledger.is_ok());
+    let ledger = ledger.unwrap();
     assert_eq!(ledger.len(), 1);
 
     assert!(ledger.contains_key(&1));
@@ -231,7 +237,7 @@ async fn limits() {
                 id: u32::from(i),
                 typ: Type::Deposit,
                 client: i,
-                amount: 1.,
+                amount: Some(1.),
             })
             .await
             .unwrap();
@@ -240,6 +246,8 @@ async fn limits() {
 
     let (parsed, ledger) = tokio::join!(parser, engine::process(rx));
     assert!(parsed.is_ok());
+    assert!(ledger.is_ok());
+    let ledger = ledger.unwrap();
     assert_eq!(ledger.len(), usize::from(u16::MAX));
 
     for i in 0..u16::MAX {

@@ -40,7 +40,8 @@ pub struct Tx {
     pub client: u16,
     #[serde(rename(deserialize = "tx"))]
     pub id: u32,
-    pub amount: f32,
+    #[serde(deserialize_with = "csv::invalid_option")]
+    pub amount: Option<f32>,
 }
 
 /// Parses the command line arguments and returns the path passed in.
@@ -66,6 +67,7 @@ pub fn args() -> Result<String, ParseError> {
 pub async fn input(path: String, txs: mpsc::Sender<Tx>) -> Result<(), Box<dyn Error>> {
     let file = File::open(path).unwrap();
     let mut reader = ReaderBuilder::new()
+        .flexible(true)
         .trim(csv::Trim::All)
         .from_reader(BufReader::new(file));
 

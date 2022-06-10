@@ -1,5 +1,5 @@
 use crate::parse::{Tx, Type};
-use std::collections::HashMap;
+use std::{collections::HashMap, error::Error};
 use tokio::sync::mpsc;
 
 #[derive(Debug)]
@@ -20,7 +20,7 @@ pub struct Account {
 ///   
 ///   Therefore I'm making the assumption that it is better to reject withdrawals from frozen
 ///   accounts and move that settlement to human interactions, but allow deposits
-pub async fn process(mut txs: mpsc::Receiver<Tx>) -> HashMap<u16, Account> {
+pub async fn process(mut txs: mpsc::Receiver<Tx>) -> Result<HashMap<u16, Account>, Box<dyn Error>> {
     // Ideally this is a remote key-value store that can evict old history records after the
     // chargeback time limits have passed. The hashmap is used as a representation of that in
     // this toy program.
@@ -37,8 +37,9 @@ pub async fn process(mut txs: mpsc::Receiver<Tx>) -> HashMap<u16, Account> {
                     locked: false,
                     history: HashMap::new(),
                 });
-                entry.available += f64::from(tx.amount);
-                entry.history.insert(tx.id, tx.amount);
+                let amount = tx.amount.ok_or("missing deposit amount")?;
+                entry.available += f64::from(amount);
+                entry.history.insert(tx.id, amount);
             }
 
             Type::Withdrawal => {
@@ -50,8 +51,9 @@ pub async fn process(mut txs: mpsc::Receiver<Tx>) -> HashMap<u16, Account> {
                     history: HashMap::new(),
                 });
                 if !entry.locked {
-                    entry.available -= f64::from(tx.amount);
-                    entry.history.insert(tx.id, tx.amount);
+                    let amount = tx.amount.ok_or("missing withdrawal amount")?;
+                    entry.available -= f64::from(amount);
+                    entry.history.insert(tx.id, amount);
                 }
             }
 
@@ -87,5 +89,5 @@ pub async fn process(mut txs: mpsc::Receiver<Tx>) -> HashMap<u16, Account> {
         }
     }
 
-    accts
+    Ok(accts)
 }
