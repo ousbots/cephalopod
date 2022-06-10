@@ -97,6 +97,12 @@ async fn basics() {
             client: 4,
             amount: Some(0.),
         },
+        Tx {
+            id: 11,
+            typ: Type::Withdrawal,
+            client: 2,
+            amount: Some(100.),
+        },
     ];
 
     let (tx, rx) = mpsc::channel(txs.len());

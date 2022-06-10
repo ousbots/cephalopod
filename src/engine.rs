@@ -13,13 +13,6 @@ pub struct Account {
 
 /// Processes the transactions and updates the ledger of client accounts. Returns the ledger
 /// as a hashmap of account id -> account struct.
-/// Notes:
-///   I couldn't find anything that would legally compel a processor to accept deposits or
-///   withdrawals from an account that it considers fraudulent, but the Uniform Commercial Code
-///   (UCC) does legally compel a processor to return funds in a chargeback (Section 4-214).
-///   
-///   Therefore I'm making the assumption that it is better to reject withdrawals from frozen
-///   accounts and move that settlement to human interactions, but allow deposits
 pub async fn process(mut txs: mpsc::Receiver<Tx>) -> Result<HashMap<u16, Account>, Box<dyn Error>> {
     // Ideally this is a remote key-value store that can evict old history records after the
     // chargeback time limits have passed. The hashmap is used as a representation of that in
@@ -52,8 +45,12 @@ pub async fn process(mut txs: mpsc::Receiver<Tx>) -> Result<HashMap<u16, Account
                 });
                 if !entry.locked {
                     let amount = tx.amount.ok_or("missing withdrawal amount")?;
-                    entry.available -= f64::from(amount);
-                    entry.history.insert(tx.id, amount);
+                    let value = f64::from(amount);
+
+                    if entry.available >= value {
+                        entry.available -= value;
+                        entry.history.insert(tx.id, amount);
+                    }
                 }
             }
 
